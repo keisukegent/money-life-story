@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マネーライフストーリー｜eラーニング体験版（音声なし）</title>
+<style>
+  body {
+    font-family: 'Hiragino Maru Gothic Pro', 'Yu Gothic', system-ui, sans-serif;
+    background: linear-gradient(135deg, #f9e0e9, #d8e9f0);
+    text-align: center;
+    color: #444;
+    padding: 20px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  h1 { color: #d06ba0; animation: fadeIn 1.2s ease; }
+  #game {
+    background: rgba(255, 255, 255, 0.94);
+    border-radius: 20px;
+    padding: 20px;
+    max-width: 740px;
+    margin: 22px auto;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    animation: slideUp 0.8s ease;
+  }
+  .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  button {
+    margin: 10px;
+    padding: 12px 18px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #f7b7c1, #fbd5b5);
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  button:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+  .status { background: linear-gradient(90deg, #fff4fa, #f0faff); border-radius: 10px; padding: 12px; margin: 10px 0; animation: fadeIn 0.6s ease; }
+  #event { font-size: 18px; margin: 18px 0; animation: fadeIn 0.6s ease; }
+
+  /* コーチボックス */
+  .coach-box { display: none; align-items: center; gap: 12px; max-width: 600px; margin: 8px auto 0; padding: 12px; border-radius: 14px; background: #fff9fd; border: 1px solid #f3d4e5; box-shadow: 0 4px 10px rgba(208,107,160,0.08); opacity: 0; transform: translateY(8px); }
+  .coach-avatar { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; background: #ffeaf4; display: grid; place-items: center; }
+  .coach-avatar img { width: 56px; height: 56px; display: block; }
+  .coach-name { font-weight: 700; color: #c65e97; font-size: 14px; margin-bottom: 4px; }
+  .coach-text { text-align: left; line-height: 1.6; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* きらきら演出 */
+  .sparkle { position: fixed; width: 10px; height: 10px; background: radial-gradient(circle, #fff 0%, transparent 70%); border-radius: 50%; animation: fall 4s linear infinite; opacity: 0.7; pointer-events: none; }
+  @keyframes fall { 0% { transform: translateY(-10px); opacity: 1; } 100% { transform: translateY(110vh); opacity: 0; } }
+
+  .note { font-size: 12px; color: #777; }
+  .pill { display:inline-block; padding:4px 10px; border-radius: 999px; background:#f3e7ef; color:#a34f84; font-size:12px; margin-left:6px; }
+
+  /* コーチ選択画面 */
+  .select-wrap { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:14px; max-width: 700px; margin: 10px auto; }
+  .coach-card { background:#fff; border:1px solid #f0d2e2; border-radius:16px; padding:14px; box-shadow:0 6px 14px rgba(0,0,0,0.06); transition: transform .2s, box-shadow .2s; }
+  .coach-card:hover { transform: translateY(-3px); box-shadow:0 10px 18px rgba(0,0,0,0.1); }
+  .coach-card img { width: 120px; height:120px; border-radius: 50%; display:block; margin:6px auto 10px; }
+  .coach-title { font-weight:700; color:#b74387; margin-bottom:6px; }
+  .coach-desc { font-size:13px; color:#666; min-height: 3.2em; }
+</style>
+</head>
+<body>
+<h1>💖 マネーライフストーリー 💰 <span class="pill">eラーニング体験（音声なし）</span></h1>
+<div id="game">
+  <div id="status" class="status"></div>
+  <div id="event"></div>
+  <div id="choices" class="row"></div>
+  <div id="coach" class="coach-box"></div>
+</div>
+<p class="note">※ まずコーチを選択してください（所要約7〜10分）。画像は差し替え可能です。</p>
+<script>
+// ===== コーチ画像（デフォルト：インラインSVGをdata URI化） =====
+const svg = (bg, face) => `data:image/svg+xml;utf8,` + encodeURIComponent(`
+  <svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'>
+    <defs>
+      <radialGradient id='g' cx='50%' cy='40%' r='70%'>
+        <stop offset='0%' stop-color='${bg}' stop-opacity='1'/>
+        <stop offset='100%' stop-color='${bg}' stop-opacity='0.85'/>
+      </radialGradient>
+    </defs>
+    <circle cx='60' cy='60' r='58' fill='url(#g)'/>
+    ${face}
+  </svg>`);
+const faceSoft = "<circle cx='60' cy='62' r='34' fill='#ffe7ef'/><circle cx='48' cy='56' r='5' fill='#b66e97'/><circle cx='72' cy='56' r='5' fill='#b66e97'/><path d='M45 72 C60 84, 75 84, 90 72' stroke='#d087b2' stroke-width='4' fill='none' stroke-linecap='round'/>";
+const faceSharp = "<circle cx='60' cy='62' r='34' fill='#e9f3ff'/><rect x='45' y='52' width='8' height='4' rx='2' fill='#4c6aa7'/><rect x='68' y='52' width='8' height='4' rx='2' fill='#4c6aa7'/><path d='M44 74 Q60 82 76 74' stroke='#5b79b6' stroke-width='4' fill='none' stroke-linecap='round'/>";
+const faceBright = "<circle cx='60' cy='62' r='34' fill='#fff6d9'/><circle cx='48' cy='56' r='6' fill='#d68b00'/><circle cx='72' cy='56' r='6' fill='#d68b00'/><path d='M45 73 Q60 88 75 73' stroke='#f0a600' stroke-width='4' fill='none' stroke-linecap='round'/>";
+
+// 画像URLを独自の写真に差し替えたい場合は、下記の src を上書きしてください
+const coachProfiles = {
+  mina: {
+    key: 'mina',
+    name: 'ミナ（ナチュラル）',
+    avatarSrc: "images/chara1.jpg",
+    desc: 'やさしく寄り添うコーチ。習慣づくりが得意。',
+    quotes: {
+      save:["“貯める力”は安心の土台ね。小さくても積み上げよう。", "固定費の見直しは、自由時間を生む魔法よ。"],
+      learn:["知識は最強の安全装置。少しずつで大丈夫。", "メモを残すだけで、学びは味方になるわ。"],
+      health:["体のメンテは長生き配当。やさしく続けよ。", "健康と家計、どちらも“整える”がキーワードね。"],
+      side:["チャンスは小さく試す。続ければ力になるわ。", "収入の柱が増えると、気持ちも安定するの。"],
+      joy:["思い出は幸福の配当。使う喜びも大切にね。", "心が満たされる支出は、あなたの栄養よ。"],
+      invest:["分散と長期。焦らず育てていこう。", "積み立ては“未来の自分”へのプレゼント。"],
+      rebalance:["点検は健全。ルールを決めて淡々とね。", "感情ではなく設計図で動けたら十分。"],
+      wait:["“待つ力”も立派な戦略よ。タイミングを見極めて。", "観察は学び。慌てなくていいの。"],
+      risk:["失敗は学びに変わる。次はもっと上手くいくわ。"],
+      plan:["目的別に分けると、迷いが減って続けやすいよ。"],
+      protect:["守りを整えると、攻めも落ち着いてできるの。"],
+      overseas:["世界に分散するのは、“世界でお金を働かせる”こと。ドルや為替もゆっくり学ぼう。"],
+      ending:["この一年、よくがんばったね。積み重ねは裏切らないよ。", "数字より、考え方が育ったことがいちばんの成果よ。"]
+    }
+  },
+  rei: {
+    key: 'rei',
+    name: 'レイ（キャリア）',
+    avatarSrc: "images/chara2.jpg",
+    desc: 'キリッとロジカル。設計×実行で伴走。',
+    quotes: {
+      save:["固定費の最適化 = 可処分時間の創出だ。", "先に“ルール”を決めれば迷わない。"],
+      learn:["知識は最強のセーフティネット。週1の学びを。", "メモと振り返りで再現性を上げよう。"],
+      health:["資産形成は長距離走。体調管理はKPIだ。", "小さな継続が複利を生む。"],
+      side:["小さく試し、数字で評価する。", "収入の柱を増やせば耐性が上がる。"],
+      joy:["予算化された余暇は、長続きする。", "幸福のポートフォリオを意識しよう。"],
+      invest:["長期・分散・低コスト：この原則を守れ。", "積み立ては“未来の自分への給与”。"],
+      rebalance:["年1〜2回のリバランスをルーチン化。", "感情ではなく設計図に従おう。"],
+      wait:["待つ判断も戦略。市場は常にある。", "観察→仮説→次の一手。"],
+      risk:["失敗はデータ。学びに変換して次へ。"],
+      plan:["目的別の資金配分で迷いを削減。"],
+      protect:["守りが整うほど攻められる。バランスだ。"],
+      overseas:["通貨・地域の分散でボラ耐性を上げる。"],
+      ending:["思考のアップデートが最大の成果だ。よくやった。"]
+    }
+  },
+  aoi: {
+    key: 'aoi',
+    name: 'アオイ（フェミニン）',
+    avatarSrc: "images/chara3.jpg",
+    desc: '明るく前向き。モチベUP担当！',
+    quotes: {
+      save:["ちょっとの工夫で未来がふわっと軽くなるよ！", "固定費をスリムにして、やりたいこと増やそ♪"],
+      learn:["学びはごほうび。今日のひとことメモから！", "知ってるだけでドキドキがワクワクに。"],
+      health:["ココロとカラダのメンテ、いっしょに続けよ！", "健康はハッピー配当！"],
+      side:["小さく始める→続ける→気づいたら積み上がってる！", "わくわくする挑戦、1歩いってみよ♪"],
+      joy:["思い出はずっと残る資産だよ〜！", "うれしい支出は、心の栄養♡"],
+      invest:["コツコツ最強！長期・分散でのんびり育てよ。", "未来の自分へのプレゼント、今日も1口♪"],
+      rebalance:["ときどき整えるだけでスッキリ！", "設計図どおりに戻せばOKだよ〜。"],
+      wait:["あせらない、今は観察タイムだね！", "次のチャンス、ぜったい来るよ！"],
+      risk:["うまくいかない日も、学びポイントGET！"],
+      plan:["目的別でわけわけ、迷わずGO！"],
+      protect:["守りがあれば安心して進めるよね♡"],
+      overseas:["世界にひろげて、未来もワクワクに！"],
+      ending:["1年おつかれさま！ぜんぶチカラになってるよ♪"]
+    }
+  }
+};
+
+let selectedCoach = null; // {key, name, avatarSrc, quotes}
+
+// ===== ゲーム本体（既存） =====
+const monthlyEvents = [
+  { m: '1月', text: '新年の抱負。まず何から始める？', choices:[
+    {label:'家計の見直し（固定費を削減）', money:+4000, happy:+2, know:+5, tag:'save'},
+    {label:'小さく投資を始める（つみたて）', money:-3000, happy:+4, know:+8, tag:'invest'},
+    {label:'学びに投資（入門講座）', money:-2000, happy:+5, know:+12, tag:'learn'}
+  ]},
+  { m: '2月', text: '健康診断の結果が届いた', choices:[
+    {label:'運動習慣を作る（ジム）', money:-4000, happy:+10, know:+3, tag:'health'},
+    {label:'食事改善＆散歩を継続', money:-500, happy:+7, know:+2, tag:'health'},
+    {label:'先延ばしにする', money:0, happy:-6, know:0, tag:'risk'}
+  ]},
+  { m: '3月', text: '副業のチャンスが到来！', choices:[
+    {label:'小さく挑戦してみる', money:+8000, happy:+4, know:+6, tag:'side'},
+    {label:'今は学びを優先', money:-1000, happy:+3, know:+8, tag:'learn'},
+    {label:'生活を整えることに集中', money:0, happy:+3, know:0, tag:'rest'}
+  ]},
+  { m: '4月', text: '友人から旅行の誘い', choices:[
+    {label:'思い切って行く', money:-8000, happy:+18, know:+3, tag:'joy'},
+    {label:'今回は控えて貯蓄', money:+0, happy:-5, know:+1, tag:'save'},
+    {label:'近場で日帰りに', money:-2000, happy:+10, know:+1, tag:'joy'}
+  ]},
+  { m: '5月', text: '相場の値動きが気になる', choices:[
+    {label:'分散を意識して少額追加', money:-4000, happy:+3, know:+8, tag:'invest'},
+    {label:'一部を利益確定', money:+3000, happy:-2, know:-2, tag:'rebalance'},
+    {label:'積み立てのみ継続', money:0, happy:+2, know:+4, tag:'wait'}
+  ]},
+  { m: '6月', text: '海外投資を検討（ETF/投信）', choices:[
+    {label:'米国ETFを少額購入', money:-5000, happy:+4, know:+10, tag:'overseas'},
+    {label:'為替を学んでから始める', money:0, happy:+3, know:+8, tag:'learn'},
+    {label:'国内中心で継続', money:0, happy:+2, know:+2, tag:'save'}
+  ]},
+  { m: '7月', text: 'ニュース：円安が進行', choices:[
+    {label:'外貨建ての割合を点検', money:0, happy:+1, know:+8, tag:'rebalance'},
+    {label:'外貨積立を少額開始', money:-3000, happy:+3, know:+6, tag:'overseas'},
+    {label:'様子を見る', money:0, happy:+0, know:+2, tag:'wait'}
+  ]},
+  { m: '8月', text: 'NISA拡充の特集を視聴', choices:[
+    {label:'つみたて枠を増額', money:-4000, happy:+4, know:+8, tag:'invest'},
+    {label:'成長投資枠を一部活用', money:-3000, happy:+3, know:+7, tag:'invest'},
+    {label:'メモだけ残して検討', money:0, happy:+1, know:+4, tag:'wait'}
+  ]},
+  { m: '9月', text: '物価上昇で生活コストが上がる', choices:[
+    {label:'固定費の再見直し', money:+3000, happy:+1, know:+6, tag:'save'},
+    {label:'収入アップ策を探す', money:0, happy:+2, know:+6, tag:'side'},
+    {label:'ポイント活用・家計術', money:+1000, happy:+2, know:+3, tag:'save'}
+  ]},
+  { m: '10月', text: '家族の出費イベント（教育/介護など）', choices:[
+    {label:'目的別口座から捻出', money:-5000, happy:+4, know:+2, tag:'plan'},
+    {label:'投資の一部を取り崩す', money:+4000, happy:-2, know:-3, tag:'rebalance'},
+    {label:'支出を分割し計画化', money:-2000, happy:+3, know:+3, tag:'plan'}
+  ]},
+  { m: '11月', text: '資産を守る：保険とリスク対策', choices:[
+    {label:'保障内容を点検・最適化', money:+1000, happy:+2, know:+6, tag:'protect'},
+    {label:'最低限に見直し', money:+2000, happy:+1, know:+4, tag:'protect'},
+    {label:'変更しない', money:0, happy:0, know:+1, tag:'wait'}
+  ]},
+  { m: '12月', text: '1年の振り返りと来年の設計', choices:[
+    {label:'自動積立＆リバランス設定', money:0, happy:+4, know:+8, tag:'rebalance'},
+    {label:'来年の目標と予算を作成', money:0, happy:+5, know:+6, tag:'plan'},
+    {label:'ご褒美に小さな旅行', money:-3000, happy:+14, know:+2, tag:'joy'}
+  ]}
+];
+
+let turn = 0; // 0..11
+let money = 50000; // 初期所持金
+let happy = 50;
+let know = 10;
+const tagPickCount = {}; // 選択傾向の集計
+
+function updateStatus(){
+  const monthLabel = monthlyEvents[turn] ? monthlyEvents[turn].m : '結果';
+  document.getElementById('status').innerHTML =
+    `📅 ${monthLabel}　（${Math.min(turn+1,12)}/12）<br>`+
+    `💵 所持金: ￥${money}　`+
+    `💖 幸福度: ${happy}　`+
+    `🧠 知識度: ${know}`;
+}
+
+function renderCoachSelect(){
+  const eventEl = document.getElementById('event');
+  const ch = document.getElementById('choices');
+  const coachBox = document.getElementById('coach');
+  document.getElementById('status').innerHTML = '👩‍🏫 まずはコーチを選んでください';
+  coachBox.style.display = 'none';
+
+  const cards = Object.values(coachProfiles).map(p => `
+    <div class='coach-card'>
+      <img src='${p.avatarSrc}' alt='${p.name}'>
+      <div class='coach-title'>${p.name}</div>
+      <div class='coach-desc'>${p.desc}</div>
+      <button data-key='${p.key}'>このコーチを選ぶ</button>
+    </div>`).join('');
+
+  eventEl.innerHTML = `<h3>コーチを選択</h3><p>雰囲気の合うコーチを選んで、1年の旅を始めましょう。</p>`;
+  ch.classList.remove('row');
+  ch.innerHTML = `<div class='select-wrap'>${cards}</div>`;
+
+  ch.querySelectorAll('button[data-key]').forEach(btn => {
+    btn.onclick = () => {
+      const key = btn.getAttribute('data-key');
+      startGameWithCoach(key);
+    };
+  });
+}
+
+function startGameWithCoach(key){
+  selectedCoach = coachProfiles[key];
+  turn = 0; money = 50000; happy = 50; know = 10;
+  for(const k in tagPickCount){ delete tagPickCount[k]; }
+  document.getElementById('choices').classList.add('row');
+  nextEvent();
+  showCoach('plan'); // 最初に軽く挨拶
+}
+
+function showCoach(tag){
+  const box = document.getElementById('coach');
+  if(!selectedCoach){ box.style.display='none'; return; }
+  const list = (selectedCoach.quotes && selectedCoach.quotes[tag]) || ["小さな一歩が、未来を変えるわ。"];
+  const line = list[Math.floor(Math.random()*list.length)];
+  box.style.display = 'flex';
+  box.innerHTML = `
+    <div class="coach-avatar"><img src='${selectedCoach.avatarSrc}' alt='${selectedCoach.name}'></div>
+    <div class="coach-text">
+      <div class="coach-name">${selectedCoach.name}</div>
+      <div>${line}</div>
+    </div>`;
+  // 再生アニメ
+  box.style.animation = 'none';
+  void box.offsetWidth; // reflow
+  box.style.animation = 'fadeInUp 0.8s ease forwards';
+}
+
+function nextEvent(){
+  // コーチ未選択なら選択画面へ
+  if(!selectedCoach){ renderCoachSelect(); return; }
+  if(turn >= monthlyEvents.length){ endGame(); return; }
+  const e = monthlyEvents[turn];
+  document.getElementById('event').innerHTML = `<strong>${e.m}</strong><br><p>${e.text}</p>`;
+  const ch = document.getElementById('choices');
+  ch.innerHTML = '';
+  e.choices.forEach(c => {
+    const b = document.createElement('button');
+    b.textContent = c.label;
+    b.onclick = () => {
+      sparkleEffect();
+      money += c.money; happy += c.happy; know += c.know;
+      tagPickCount[c.tag] = (tagPickCount[c.tag]||0)+1;
+      showCoach(c.tag);
+      turn++;
+      updateStatus();
+      setTimeout(nextEvent, 550); // 余韻後に次へ
+    };
+    ch.appendChild(b);
+  });
+  updateStatus();
+}
+
+function endGame(){
+  let type = '';
+  if(happy > 70 && money > 60000) type = '💎 バランス美人タイプ';
+  else if(happy > 70) type = '🌷 ハートフルタイプ';
+  else if(know > 55) type = '📈 チャレンジャータイプ';
+  else type = '💭 マイペースタイプ';
+
+  // 個別アドバイス（簡易）
+  const tips = [];
+  if((tagPickCount.overseas||0)===0) tips.push('海外分散の一歩を来年は検討してみましょう（ETF/投信の少額から）。');
+  if((tagPickCount.rebalance||0)<2) tips.push('年1〜2回の“リバランス”で、感情ではなく設計で運用を。');
+  if(know < 40) tips.push('学びメモを残して、知識を“見える化”しましょう。');
+  if((tagPickCount.health||0)===0) tips.push('健康は長生き配当。小さく続ける習慣を。');
+
+  document.getElementById('event').innerHTML = `
+    <h3>結果発表</h3>
+    <p>あなたは <strong>${type}</strong> でした。</p>
+    <div style="text-align:left; max-width:600px; margin:12px auto; background:#fff7fb; border:1px solid #f0cfe1; padding:12px; border-radius:10px;">
+      <strong>講座ポイント（要点）</strong>
+      <ul>
+        <li>長期・分散・継続が基本。積み立ては未来へのプレゼント。</li>
+        <li>海外投資は“世界でお金を働かせる”こと。通貨リスクは学びで軽減。</li>
+        <li>固定費の見直しと目的別口座で、迷いを減らして続けやすく。</li>
+        <li>年1〜2回のリバランスで、設計図に沿った運用を。</li>
+      </ul>
+      <div style="text-align:center; margin-top:14px;">
+        <a href="https://www.instagram.com/kaorin_family/" target="_blank" style="display:inline-block; background:#d06ba0; color:#fff; padding:10px 18px; border-radius:8px; text-decoration:none; font-weight:600; text-decoration:none;">
+          💡 お金のセミナーに参加する（申し込み）
+        </a>
+      </div>
+      ${tips.length?('<strong>あなたへのひとこと</strong><ul>'+tips.map(t=>`<li>${t}</li>`).join('')+'</ul>'):''}
+    </div>
+  `;
+  document.getElementById('choices').innerHTML = '<button onclick="location.reload()">もう一度遊ぶ（コーチ選びから）</button>';
+  showCoach('ending');
+  sparkleEffect(40);
+}
+
+function sparkleEffect(count=10){
+  for(let i=0;i<count;i++){
+    const s=document.createElement('div');
+    s.className='sparkle';
+    s.style.left=Math.random()*100+'vw';
+    s.style.animationDuration=(3+Math.random()*2)+'s';
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),4000);
+  }
+}
+
+// 開始：まずはコーチ選択画面
+nextEvent();
+</script>
+</body>
+</html>
