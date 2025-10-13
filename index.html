@@ -99,7 +99,9 @@ const coachProfiles = {
   mina: {
     key: 'mina',
     name: 'ミナ（ナチュラル）',
+    // 画像パスを置きたい場合は images/chara1.jpg を用意。無ければ下の fallback が表示されます。
     avatarSrc: "images/chara1.jpg",
+    fallback: svg('#ffd6e9', faceSoft),
     desc: 'やさしく寄り添うコーチ。習慣づくりが得意。',
     quotes: {
       save:["“貯める力”は安心の土台ね。小さくても積み上げよう。", "固定費の見直しは、自由時間を生む魔法よ。"],
@@ -121,6 +123,7 @@ const coachProfiles = {
     key: 'rei',
     name: 'レイ（キャリア）',
     avatarSrc: "images/chara2.jpg",
+    fallback: svg('#d9e7ff', faceSharp),
     desc: 'キリッとロジカル。設計×実行で伴走。',
     quotes: {
       save:["固定費の最適化 = 可処分時間の創出だ。", "先に“ルール”を決めれば迷わない。"],
@@ -142,6 +145,7 @@ const coachProfiles = {
     key: 'aoi',
     name: 'アオイ（フェミニン）',
     avatarSrc: "images/chara3.jpg",
+    fallback: svg('#fff0c9', faceBright),
     desc: '明るく前向き。モチベUP担当！',
     quotes: {
       save:["ちょっとの工夫で未来がふわっと軽くなるよ！", "固定費をスリムにして、やりたいこと増やそ♪"],
@@ -251,7 +255,7 @@ function renderCoachSelect(){
 
   const cards = Object.values(coachProfiles).map(p => `
     <div class='coach-card'>
-      <img src='${p.avatarSrc}' alt='${p.name}'>
+      <img src='${p.avatarSrc}' alt='${p.name}' onerror="this.onerror=null; this.src='${p.fallback}'">
       <div class='coach-title'>${p.name}</div>
       <div class='coach-desc'>${p.desc}</div>
       <button data-key='${p.key}'>このコーチを選ぶ</button>
@@ -285,7 +289,7 @@ function showCoach(tag){
   const line = list[Math.floor(Math.random()*list.length)];
   box.style.display = 'flex';
   box.innerHTML = `
-    <div class="coach-avatar"><img src='${selectedCoach.avatarSrc}' alt='${selectedCoach.name}'></div>
+    <div class="coach-avatar"><img src='${selectedCoach.avatarSrc}' alt='${selectedCoach.name}' onerror="this.onerror=null; this.src='${selectedCoach.fallback}'"></div>
     <div class="coach-text">
       <div class="coach-name">${selectedCoach.name}</div>
       <div>${line}</div>
